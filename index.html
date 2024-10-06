@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXPENSES BY MINTU KUMAR AKA RAVIKANT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 10px;
+            background-color: orange;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: orange;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        .highlight {
+            background-color: orange;
+        }
+
+        .edit-btn, .delete-btn {
+            background-color: grey;
+            color: white;
+            padding: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+        }
+
+        @media screen and (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            table, th, td {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>EXPENSES BY MINTU KUMAR AKA RAVIKANT</header>
+
+    <form id="purchaseForm">
+        <label for="shopkeeper">Shopkeeper Name</label>
+        <input type="text" id="shopkeeper" required>
+
+        <label for="item">Item Bought</label>
+        <input type="text" id="item" required>
+
+        <label for="price">Price (INR)</label>
+        <input type="number" id="price" required>
+
+        <label for="date">Date</label>
+        <input type="date" id="date" required>
+
+        <button type="button" onclick="addPurchase()">Add Purchase</button>
+    </form>
+
+    <h3>Purchase History</h3>
+    <table id="purchaseTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Shopkeeper</th>
+                <th>Item</th>
+                <th>Price (INR)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <h4>Total Expenditure:</h4>
+    <p id="shopkeeperTotals"></p>
+    <p>Daily Total: <span id="dailyTotal">0</span> INR</p>
+    <p>Monthly Total: <span id="monthlyTotal">0</span> INR</p>
+
+    <h3>Filters:</h3>
+    <label for="filterDate">Filter by Date:</label>
+    <input type="date" id="filterDate" oninput="applyFilters()">
+
+    <label for="filterShopkeeper">Filter by Shopkeeper:</label>
+    <input type="text" id="filterShopkeeper" oninput="applyFilters()">
+
+    <label for="filterPrice">Filter by Price (High to Low):</label>
+    <button type="button" onclick="sortByPrice()">Sort</button>
+
+    <h3>Send Report</h3>
+    <button onclick="sendReport('daily')">Send Daily Report</button>
+    <button onclick="sendReport('weekly')">Send Weekly Report</button>
+    <button onclick="sendReport('monthly')">Send Monthly Report</button>
+
+    <script>
+        let purchases = JSON.parse(localStorage.getItem('purchases')) || [];
+        let dailyTotal = 0;
+        let monthlyTotal = 0;
+
+        function addPurchase() {
+            const shopkeeper = document.getElementById('shopkeeper').value;
+            const item = document.getElementById('item').value;
+            const price = parseFloat(document.getElementById('price').value);
+            const date = document.getElementById('date').value;
+
+            const newPurchase = { shopkeeper, item, price, date };
+            purchases.push(newPurchase);
+
+            localStorage.setItem('purchases', JSON.stringify(purchases));
+
+            updateTable();
+            clearForm();
+        }
+
+        function updateTable() {
+            const tbody = document.querySelector('#purchaseTable tbody');
+            tbody.innerHTML = '';
+
+            purchases.forEach((purchase, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${purchase.date}</td>
+                    <td>${purchase.shopkeeper}</td>
+                    <td>${purchase.item}</td>
+                    <td>${purchase.price} INR</td>
+                    <td>
+                        <button class="edit-btn" onclick="editPurchase(${index})">Edit</button>
+                        <button class="delete-btn" onclick="deletePurchase(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            calculateTotals();
+        }
+
+        function clearForm() {
+            document.getElementById('purchaseForm').reset();
+        }
+
+        function deletePurchase(index) {
+            purchases.splice(index, 1);
+            localStorage.setItem('purchases', JSON.stringify(purchases));
+            updateTable();
+        }
+
+        function editPurchase(index) {
+            const purchase = purchases[index];
+            document.getElementById('shopkeeper').value = purchase.shopkeeper;
+            document.getElementById('item').value = purchase.item;
+            document.getElementById('price').value = purchase.price;
+            document.getElementById('date').value = purchase.date;
+
+            deletePurchase(index); // Automatically delete the old entry
+        }
+
+        function calculateTotals() {
+            let shopkeeperTotals = {};
+            dailyTotal = 0;
+
+            purchases.forEach(purchase => {
+                dailyTotal += purchase.price;
+
+                if (shopkeeperTotals[purchase.shopkeeper]) {
+                    shopkeeperTotals[purchase.shopkeeper] += purchase.price;
+                } else {
+                    shopkeeperTotals[purchase.shopkeeper] = purchase.price;
+                }
+            });
+
+            document.getElementById('dailyTotal').textContent = dailyTotal;
+
+            let totalString = '';
+            for (const shopkeeper in shopkeeperTotals) {
+                totalString += `${shopkeeper}: ${shopkeeperTotals[shopkeeper]} INR\n`;
+            }
+            document.getElementById('shopkeeperTotals').textContent = totalString;
+        }
+
+        function applyFilters() {
+            const filterDate = document.getElementById('filterDate').value;
+            const filterShopkeeper = document.getElementById('filterShopkeeper').value.toLowerCase();
+
+            const filteredPurchases = purchases.filter(purchase => {
+                return (!filterDate || purchase.date === filterDate) &&
+                       (!filterShopkeeper || purchase.shopkeeper.toLowerCase().includes(filterShopkeeper));
+            });
+
+            displayFilteredResults(filteredPurchases);
+        }
+
+        function displayFilteredResults(filteredPurchases) {
+            const tbody = document.querySelector('#purchaseTable tbody');
+            tbody.innerHTML = '';
+
+            filteredPurchases.forEach((purchase, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${purchase.date}</td>
+                    <td>${purchase.shopkeeper}</td>
+                    <td>${purchase.item}</td>
+                    <td>${purchase.price} INR</td>
+                    <td>
+                        <button class="edit-btn" onclick="editPurchase(${index})">Edit</button>
+                        <button class="delete-btn" onclick="deletePurchase(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function sortByPrice() {
+            purchases.sort((a, b) => b.price - a.price);
+            updateTable();
+        }
+
+        function sendReport(period) {
+            let report = `Expanse Report (${period}):\n`;
+            purchases.forEach(purchase => {
+                report += `${purchase.date} - ${purchase
+.shopkeeper}: ${purchase.item} - ${purchase.price} INR\n`;
+            });
+
+            // You would integrate your email or SMS sending service here
+            alert(`Report sent for ${period}!`);
+            console.log(report);
+        }
+
+        // Load purchases from local storage when the page loads
+        window.onload = function() {
+            updateTable();
+        };
+    </script>
+
+</body>
+</html>
